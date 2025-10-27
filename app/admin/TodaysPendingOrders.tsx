@@ -40,7 +40,7 @@ export function TodaysPendingOrders({
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center w-full">
-          <CardTitle>Today's Pending Orders</CardTitle>
+          <CardTitle>Pending & Ready Orders</CardTitle>
           <Link href="/admin/orders" passHref>
             <Button variant="ghost" size="icon">
               <ExternalLink className="h-4 w-4" />
@@ -50,7 +50,7 @@ export function TodaysPendingOrders({
       </CardHeader>
       <CardContent>
         {orders.length === 0 ? (
-          <p className="text-muted-foreground">No pending orders for today.</p>
+          <p className="text-muted-foreground">No pending or ready orders.</p>
         ) : (
           <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2">
             {orders.map((order) => (
@@ -99,6 +99,14 @@ export function TodaysPendingOrders({
                         Deny
                       </Button>
                     </div>
+                  ) : order.status === "ready" ? (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                      onClick={() => handleStatusChange(order.id, "completed")}
+                    >
+                      Mark Complete
+                    </Button>
                   ) : (
                     // Fallback for already-updated orders
                     <Select
