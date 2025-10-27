@@ -102,6 +102,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     setLoading(true);
+    // Immediately clear user state before signOut to prevent race conditions
+    setUser(null);
+    setError(null);
+    
     try {
       await supabase.auth.signOut();
       toast.success("Signed out successfully");
