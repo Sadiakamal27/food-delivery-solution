@@ -23,6 +23,7 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string>("customer");
   const pathname = usePathname();
   const { items } = useCart();
   const { user, signOut } = useAuth();
@@ -41,32 +42,39 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
-    async function checkAdminStatus() {
+    async function checkUserRole() {
       if (!user) {
         setIsAdmin(false);
+        // setUserRole is not defined; comment out or remove this line if unused
+        // setUserRole("customer");
         return;
       }
 
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('is_admin')
+          .select('is_admin, role')
           .eq('id', user.id)
           .maybeSingle();
 
         if (error) {
-          console.error('Error fetching admin status:', error);
+          console.error('Error fetching user role:', error);
           return;
         }
 
-        setIsAdmin(data?.is_admin || false);
+        const isAdminUser = data?.is_admin || false;
+        const role = data?.role || "customer";
+        
+        setIsAdmin(isAdminUser);
+        setUserRole(role);
       } catch (error) {
-        console.error('Error checking admin status:', error);
+        console.error('Error checking user role:', error);
         setIsAdmin(false);
+        setUserRole("customer");
       }
     }
 
-    checkAdminStatus();
+    checkUserRole();
   }, [user, supabase]);
 
   // Prevent body scroll when menu is open
@@ -225,17 +233,22 @@ export function Navbar() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="z-[9999]">
                   <DropdownMenuItem asChild>
-                    <Link href="/profile">My Profile</Link>
+                    <Link href="/profile" className='cursor-pointer'>My Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/orders">My Orders</Link>
+                    <Link href="/orders" className='cursor-pointer'>My Orders</Link>
                   </DropdownMenuItem>
-                  {isAdmin && (
+                  {(userRole === "admin" || userRole === "staff") && (
                     <DropdownMenuItem asChild>
-                      <Link href="/admin">Admin Dashboard</Link>
+                      <Link href="/kitchen" className='cursor-pointer'>Kitchen Dashboard</Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => signOut()}>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className='cursor-pointer'>Admin Dashboard</Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => signOut()} className='cursor-pointer'>
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
