@@ -15,7 +15,7 @@ import { startOfDay, subDays } from "date-fns";
 import { TodaysPendingOrders } from "./TodaysPendingOrders";
 import { OrderDetailsModal } from "./orders/OrderDetailsModal";
 import { toast } from "sonner";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -44,6 +44,12 @@ type TopProduct = {
   total_sold: number;
 };
 
+// ✅ FIXED TYPE HERE
+type OrderSummary = {
+  created_at: string;
+  order_total: number;
+};
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -54,17 +60,15 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [allOrders, setAllOrders] = useState<
-    { created_at: string; total: number }[]
-  >([]);
+
+  // ✅ FIXED TYPE HERE
+  const [allOrders, setAllOrders] = useState<OrderSummary[]>([]);
+
   const [filteredChartData, setFilteredChartData] = useState<ChartData[]>([]);
-  const [activeFilter, setActiveFilter] = useState<"today" | "week" | "month">(
-    "week"
-  );
+  const [activeFilter, setActiveFilter] = useState<"today" | "week" | "month">("week");
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
 
-  useEffect(() => {
-    async function fetchAllData() {
+  const fetchAllData = async () => {
       setLoading(true);
       
       // Fetch stats
@@ -91,13 +95,12 @@ export default function AdminDashboard() {
         });
       }
 
-      // Fetch today's pending orders
+      // Fetch pending orders (including ready orders)
       const today = startOfDay(new Date()).toISOString();
       const { data: pendingOrders, error: pendingOrdersError } = await supabase
         .from("orders")
         .select("*")
-        .eq("status", "pending")
-        .gte("created_at", today)
+        .in("status", ["pending", "ready"])
         .order("created_at", { ascending: false });
         
       if (pendingOrdersError) {
@@ -118,14 +121,14 @@ export default function AdminDashboard() {
       }
 
       // Fetch top grossing products for today
-      const { data: todaysOrders, error: ordersError } = await supabase
+      const { data: todaysOrders, error: todaysOrdersError } = await supabase
         .from('orders')
         .select('id, metadata')
         .eq('status', 'completed')
         .gte('created_at', today);
 
-      if (ordersError) {
-        console.error("Error fetching today's orders for top products:", ordersError);
+      if (todaysOrdersError) {
+        console.error("Error fetching today's orders for top products:", todaysOrdersError);
       } else if (todaysOrders && todaysOrders.length > 0) {
         const productSales = todaysOrders.reduce<Record<string, TopProduct>>((acc, order) => {
           if (!order.metadata || !Array.isArray(order.metadata)) return acc;
@@ -136,7 +139,7 @@ export default function AdminDashboard() {
               acc[key] = {
                 id: item.menu_item_id,
                 name: item.name,
-                image_url: null, // We don't have image_url in metadata
+                image_url: null,
                 total_sold: 0
               };
             }
@@ -155,14 +158,38 @@ export default function AdminDashboard() {
       }
 
       setLoading(false);
-    }
+  };
 
+  useEffect(() => {
     fetchAllData();
   }, []);
 
   useEffect(() => {
     processChartData();
   }, [allOrders, activeFilter]);
+
+  // Real-time updates for order changes
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin_orders_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+        },
+        (payload) => {
+          console.log("Admin order update:", payload);
+          fetchAllData(); // Refresh all data when orders change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const processChartData = () => {
     let startDate: Date;
@@ -193,7 +220,9 @@ export default function AdminDashboard() {
         return acc;
     }, {} as {[key: string]: ChartData});
 
-    setFilteredChartData(Object.values(aggregated).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+    setFilteredChartData(
+      Object.values(aggregated).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    );
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
@@ -242,7 +271,7 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold tracking-tight mb-6">Dashboard</h1>
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="border-0  border-l-4 border-green-500 shadow-lg">
+          <Card className="border-0 border-l-4 border-green-500 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-lg font-medium">
                 Total Revenue
@@ -324,7 +353,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* SALES OVERVIEW CHARTS:  */}
+        {/* SALES OVERVIEW CHARTS */}
         <Card>
           <CardHeader className="flex flex-row justify-between items-start">
             <div>
@@ -334,9 +363,9 @@ export default function AdminDashboard() {
               </CardDescription>
             </div>
             <div className="flex gap-2">
-                <Button variant={activeFilter === 'today' ? 'default' : 'outline'} onClick={() => setActiveFilter('today')}>Today</Button>
-                <Button variant={activeFilter === 'week' ? 'default' : 'outline'} onClick={() => setActiveFilter('week')}>Last 7 Days</Button>
-                <Button variant={activeFilter === 'month' ? 'default' : 'outline'} onClick={() => setActiveFilter('month')}>Last 3 Months</Button>
+              <Button variant={activeFilter === 'today' ? 'default' : 'outline'} onClick={() => setActiveFilter('today')}>Today</Button>
+              <Button variant={activeFilter === 'week' ? 'default' : 'outline'} onClick={() => setActiveFilter('week')}>Last 7 Days</Button>
+              <Button variant={activeFilter === 'month' ? 'default' : 'outline'} onClick={() => setActiveFilter('month')}>Last 3 Months</Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -377,4 +406,4 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
-} 
+}
