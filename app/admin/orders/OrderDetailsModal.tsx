@@ -27,6 +27,7 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [denying, setDenying] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -80,6 +81,27 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
       toast.error("Failed to deny order.");
     } finally {
       setDenying(false);
+    }
+  };
+
+  // --- Complete order ---
+  const handleComplete = async () => {
+    try {
+      setCompleting(true);
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "completed" })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      toast.success("Order completed successfully!");
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to complete order.");
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -197,6 +219,18 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                 </Button>
                 <Button onClick={handleAccept} disabled={accepting || denying}>
                   {accepting ? "Processing..." : "Accept"}
+                </Button>
+              </div>
+            )}
+
+            {order.status === "ready" && (
+              <div className="flex justify-end gap-3 pt-4 mb-4">
+                <Button
+                  onClick={handleComplete}
+                  disabled={completing}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {completing ? "Processing..." : "Mark as Completed"}
                 </Button>
               </div>
             )}
