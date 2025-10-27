@@ -7,6 +7,8 @@ type OrderStatus =
   | "accepted"
   | "denied"
   | "processing"
+  | "cooking"
+  | "ready"
   | "completed"
   | "cancelled"
   | "failed";
@@ -21,6 +23,8 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   accepted:  { variant: "default", className: "bg-green-500 text-white" },
   denied:    { variant: "destructive", className: "bg-red-500 text-white" },
   processing:{ variant: "outline", className: "border-blue-500 text-blue-500" },
+  cooking:   { variant: "outline", className: "border-orange-500 text-orange-500" },
+  ready:     { variant: "default", className: "bg-green-600 text-white" },
   completed: { variant: "default", className: "bg-emerald-600 text-white" },
   cancelled: { variant: "destructive", className: "bg-red-400 text-white" },
   failed:    { variant: "destructive", className: "bg-orange-500 text-white" },
