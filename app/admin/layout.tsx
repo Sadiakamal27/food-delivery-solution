@@ -16,6 +16,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/auth-context";
 import { NewOrderNotifier } from "./NewOrderNotifier";
+import { ReadyOrderNotifier } from "./ReadyOrderNotifier";
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: Home },
@@ -40,6 +41,7 @@ export default function AdminLayout({
         </div>
         <main className="flex-1 p-8 ">
           <NewOrderNotifier />
+          <ReadyOrderNotifier />
           {children}
         </main>
         <Toaster />

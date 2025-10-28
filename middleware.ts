@@ -13,6 +13,7 @@ export async function middleware(request: NextRequest) {
       session,
       sessionError,
       userId: session?.user?.id,
+      path: request.nextUrl.pathname,
     });
 
     if (!session) {
@@ -36,12 +37,29 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/signin', request.url));
     }
 
-    if (!profile.is_admin) {
-      console.log('🚫 Not admin - redirecting to /');
-      return NextResponse.redirect(new URL('/', request.url));
+    const path = request.nextUrl.pathname;
+    
+    // Check if accessing admin routes
+    if (path.startsWith('/admin')) {
+      if (!profile.is_admin) {
+        console.log('🚫 Not admin - redirecting to /');
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+      console.log('✅ Admin verified - allowing access');
+      return res;
+    }
+    
+    // Check if accessing kitchen routes
+    if (path.startsWith('/kitchen')) {
+      // Allow staff with role 'kitchen' or 'admin' or 'staff'
+      if (!profile.is_admin && !['kitchen', 'admin', 'staff'].includes(profile.role || '')) {
+        console.log('🚫 Not authorized for kitchen - redirecting to /');
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+      console.log('✅ Kitchen access verified - allowing access');
+      return res;
     }
 
-    console.log('✅ Admin verified - allowing access');
     return res;
   } catch (error) {
     console.error('❌ Middleware error:', error);
@@ -51,5 +69,5 @@ export async function middleware(request: NextRequest) {
 
 
 export const config = {
-  matcher: ['/admin/:path*', '/admin']
+  matcher: ['/admin/:path*', '/admin', '/kitchen/:path*', '/kitchen']
 }; 

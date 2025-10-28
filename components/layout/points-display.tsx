@@ -14,6 +14,7 @@ export function PointsDisplay() {
 
   useEffect(() => {
     const fetchPoints = async () => {
+      // Immediately return if no user
       if (!user?.id) {
         setPoints(null);
         setLoading(false);
@@ -45,7 +46,15 @@ export function PointsDisplay() {
     fetchPoints();
   }, [user, supabase]);
 
-  if (!user) return null;
+  // Return null immediately if no user
+  if (!user) {
+    return null;
+  }
+  
+  // Don't show anything if loading and no points
+  if (loading && points === null) {
+    return null;
+  }
 
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full">
